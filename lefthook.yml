@@ -1,0 +1,11 @@
+pre-commit:
+  parallel: true
+  commands:
+    check-svelte:
+      root: true
+      glob: '**/*.{js,ts,jsx,tsx,svelte}'
+      run: pnpm check --files {staged_files}
+    lint:
+      root: true
+      glob: '**/*.{js,ts,jsx,tsx,svelte}'
+      run: pnpm eslint --fix --no-error-on-unmatched-pattern {staged_files}
