@@ -1,6 +1,7 @@
 import { writable } from 'svelte/store';
 
-type Player = {
+// --- Types ---
+export type Player = {
   id: number;
   name: string;
   points: number;
@@ -11,7 +12,7 @@ type Player = {
   tieBreaker?: boolean;
 };
 
-type Match = {
+export type Match = {
   player1: Player;
   player2: Player | null;
   result: 'win' | 'loss' | 'draw' | '';
@@ -19,13 +20,15 @@ type Match = {
 
 const maxRounds = 5;
 
+type InvalidMatch = { player1Id: number; player2Id: number };
+
 type TournamentState = {
   players: Player[];
   roundNumber: number;
   tournamentStarted: boolean;
   tournamentFinished: boolean;
   currentMatches: Match[];
-  invalidMatches: Array<{ player1Id: number; player2Id: number }>;
+  invalidMatches: InvalidMatch[];
   retries: number;
   history: TournamentState[];
 };
@@ -41,7 +44,7 @@ const initialState: TournamentState = {
   history: []
 };
 
-const tournamentStore = writable(initialState);
+const tournamentStore = writable<TournamentState>(initialState);
 
 const loadFromLocalStorage = () => {
   if (typeof window !== 'undefined') {

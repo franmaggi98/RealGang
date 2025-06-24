@@ -6,6 +6,10 @@
   import PlayerList from '$lib/components/PlayerList.svelte';
   import MatchList from '$lib/components/MatchList.svelte';
   import TournamentResults from '$lib/components/TournamentResults.svelte';
+  import History from '$lib/components/History.svelte';
+  import { pageTitle } from '../store/titleStore';
+
+  pageTitle.set('Tournament');
 
   let playerName = '';
   const maxNameLength = 19;
@@ -68,9 +72,6 @@
   }
 </script>
 
-<div>
-  <h1 class="text-4xl font-bold text-center my-4">Tournament</h1>
-</div>
 <div class="container mx-auto p-4">
   {#if !$tournamentStore.tournamentStarted && !$tournamentStore.tournamentFinished}
     <div
@@ -170,6 +171,9 @@
       </div>
     </div>
   {/if}
+  {#if $tournamentStore.tournamentStarted}
+  <History />
+{/if}
 </div>
 
 {#if showWheelModal}
