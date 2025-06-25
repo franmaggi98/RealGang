@@ -6,6 +6,9 @@
   <table class="table table-zebra w-full border-1">
     <thead>
       <tr>
+        {#if $tournamentStore.teamMode === true}
+          <th>Team</th>
+        {/if}
         <th>Name</th>
         <th>Points</th>
         <th>Victories</th>
@@ -16,6 +19,9 @@
     <tbody>
       {#each $tournamentStore.players as player}
         <tr>
+          {#if $tournamentStore.teamMode === true}
+            <td>{player.teamId}</td>
+          {/if}
           <td>{player.name}</td>
           <td>{player.points}</td>
           <td>{player.victories}</td>

@@ -69,17 +69,76 @@ const tournamentStore = writable<TournamentState>(initialState);
 
 const loadFromLocalStorage = () => {
   if (typeof window !== 'undefined') {
-    const storedState = localStorage.getItem('tournamentState');
-    if (storedState) {
-      const parsedState: TournamentState = JSON.parse(storedState);
-      parsedState.players = parsedState.players.map(p => ({
-        ...p,
-        decks: p.decks || [],
-        byes: p.byes || 0,
-        teamId: p.teamId || 0,
-        lastByeRound: p.lastByeRound || 0
+    const storedPlayers = localStorage.getItem('players');
+    const storedRoundNumber = localStorage.getItem('roundNumber');
+    const storedTournamentStarted = localStorage.getItem('tournamentStarted');
+    const storedTournamentFinished = localStorage.getItem('tournamentFinished');
+    const storedCurrentMatches = localStorage.getItem('currentMatches');
+    const storedInvalidMatches = localStorage.getItem('invalidMatches');
+    const storedHistory = localStorage.getItem('history');
+    const storedTeamMode = localStorage.getItem('teamMode');
+    const storedTeams = localStorage.getItem('teams');
+    const storedThreePlayerTeamId = localStorage.getItem('threePlayerTeamId');
+
+    if (storedTeamMode) {
+      tournamentStore.update((state) => ({
+        ...state,
+        teamMode: storedTeamMode === 'true'
       }));
-      tournamentStore.set(parsedState);
+    }
+    if (storedTeams) {
+      tournamentStore.update((state) => ({
+        ...state,
+        teams: JSON.parse(storedTeams)
+      }));
+    }
+    if (storedThreePlayerTeamId) {
+      tournamentStore.update((state) => ({
+        ...state,
+        threePlayerTeamId: parseInt(storedThreePlayerTeamId, 10)
+      }));
+    }
+    if (storedPlayers) {
+      const players: Player[] = JSON.parse(storedPlayers);
+      // Asegúrate de inicializar decks en players que no lo tuvieran
+      const playersWithDecks = players.map((p) => ({ ...p, decks: p.decks || [] }));
+      tournamentStore.update((s) => ({ ...s, players: playersWithDecks }));
+    }
+    if (storedRoundNumber) {
+      tournamentStore.update((state) => ({
+        ...state,
+        roundNumber: parseInt(storedRoundNumber, 10)
+      }));
+    }
+    if (storedTournamentStarted) {
+      tournamentStore.update((state) => ({
+        ...state,
+        tournamentStarted: storedTournamentStarted === 'true'
+      }));
+    }
+    if (storedTournamentFinished) {
+      tournamentStore.update((state) => ({
+        ...state,
+        tournamentFinished: storedTournamentFinished === 'true'
+      }));
+    }
+    if (storedCurrentMatches) {
+      tournamentStore.update((state) => ({
+        ...state,
+        currentMatches: JSON.parse(storedCurrentMatches)
+      }));
+      if (storedInvalidMatches) {
+        tournamentStore.update((state) => ({
+          ...state,
+          invalidMatches: JSON.parse(storedInvalidMatches)
+        }));
+      }
+    }
+    if (storedHistory) {
+      tournamentStore.update((state) => ({
+        ...state,
+        history: JSON.parse(storedHistory)
+      }));
     }
   }
 };
@@ -87,7 +146,16 @@ const loadFromLocalStorage = () => {
 const saveStateToLocalStorage = () => {
   tournamentStore.subscribe((state) => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('tournamentState', JSON.stringify(state));
+      localStorage.setItem('players', JSON.stringify(state.players));
+      localStorage.setItem('roundNumber', state.roundNumber.toString());
+      localStorage.setItem('tournamentStarted', state.tournamentStarted.toString());
+      localStorage.setItem('tournamentFinished', state.tournamentFinished.toString());
+      localStorage.setItem('currentMatches', JSON.stringify(state.currentMatches));
+      localStorage.setItem('invalidMatches', JSON.stringify(state.invalidMatches));
+      localStorage.setItem('history', JSON.stringify(state.history));
+      localStorage.setItem('teamMode', state.teamMode.toString());
+      localStorage.setItem('teams', JSON.stringify(state.teams));
+      localStorage.setItem('threePlayerTeamId', state.threePlayerTeamId?.toString() || '');
     }
   });
 };
@@ -164,11 +232,13 @@ const deletePlayer = (playerId: number) => {
   saveStateToLocalStorage();
 };
 
-const createRandomTeams = (players: Player[]): { teams: Team[]; threePlayerTeamId: number | null } => {
+const createRandomTeams = (
+  players: Player[]
+): { teams: Team[]; threePlayerTeamId: number | null } => {
   const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
   const teams: Team[] = [];
   let threePlayerTeamId: number | null = null;
-  
+
   for (let i = 0; i < shuffledPlayers.length; i += 2) {
     if (i + 1 < shuffledPlayers.length) {
       const teamId = teams.length + 1;
@@ -186,13 +256,13 @@ const createRandomTeams = (players: Player[]): { teams: Team[]; threePlayerTeamI
       }
     }
   }
-  
+
   return { teams, threePlayerTeamId };
 };
 
 const areTeammates = (state: TournamentState, player1Id: number, player2Id: number): boolean => {
   if (!state.teamMode) return false;
-  
+
   for (const team of state.teams) {
     if (team.players.includes(player1Id)) {
       return team.players.includes(player2Id);
@@ -209,9 +279,11 @@ const startTournament = () => {
     }
 
     const teamMode = state.teamMode;
-    const { teams, threePlayerTeamId } = teamMode ? createRandomTeams(state.players) : { teams: [], threePlayerTeamId: null };
-    
-    const playersWithTeams = state.players.map(player => {
+    const { teams, threePlayerTeamId } = teamMode
+      ? createRandomTeams(state.players)
+      : { teams: [], threePlayerTeamId: null };
+
+    const playersWithTeams = state.players.map((player) => {
       if (teamMode) {
         for (const team of teams) {
           if (team.players.includes(player.id)) {
@@ -231,7 +303,13 @@ const startTournament = () => {
       teamMode,
       teams,
       threePlayerTeamId,
-      currentMatches: pairPlayers([...playersWithTeams], state.invalidMatches, teamMode, teams, threePlayerTeamId),
+      currentMatches: pairPlayers(
+        [...playersWithTeams],
+        state.invalidMatches,
+        teamMode,
+        teams,
+        threePlayerTeamId
+      ),
       invalidMatches: [],
       retries: 0,
       history: []
@@ -315,9 +393,9 @@ const submitResults = () => {
     } else {
       try {
         const nextRoundMatches = pairPlayers(
-          [...playersWithTieBreakers], 
-          state.invalidMatches, 
-          state.teamMode, 
+          [...playersWithTieBreakers],
+          state.invalidMatches,
+          state.teamMode,
           state.teams,
           state.threePlayerTeamId
         );
@@ -354,8 +432,8 @@ const pairPlayers = (
   threePlayerTeamId: number | null
 ): Match[] => {
   // Verificar si es la primera ronda (todos los jugadores tienen 0 puntos)
-  const isFirstRound = players.every(player => player.points === 0);
-  
+  const isFirstRound = players.every((player) => player.points === 0);
+
   let sortedPlayers: Player[];
   if (isFirstRound) {
     // En la primera ronda, ordenar aleatoriamente
@@ -373,13 +451,11 @@ const pairPlayers = (
 
     if (remaining.length % 2 !== 0) {
       let candidate: Player | null = null;
-      
+
       if (teamMode && threePlayerTeamId) {
         // MODO EQUIPOS: selección de Bye solo del equipo de 3
-        const teamCandidates = remaining.filter(player => 
-          player.teamId === threePlayerTeamId
-        );
-        
+        const teamCandidates = remaining.filter((player) => player.teamId === threePlayerTeamId);
+
         if (teamCandidates.length > 0) {
           // Priorizar al que no ha tenido Bye o lo tuvo hace más rondas
           teamCandidates.sort((a, b) => a.lastByeRound - b.lastByeRound);
@@ -391,19 +467,19 @@ const pairPlayers = (
       } else {
         // MODO INDIVIDUAL: lógica original para selección de Bye
         const sortedRemaining = [...remaining].sort((a, b) => a.points - b.points);
-        
+
         // Filtrar jugadores que no han tenido Bye
-        const candidates = sortedRemaining.filter(player => 
-          !player.opponents.includes(-1) && player.byes === 0
+        const candidates = sortedRemaining.filter(
+          (player) => !player.opponents.includes(-1) && player.byes === 0
         );
 
         // Si no hay jugadores sin Bye, usar todos
         const candidatePool = candidates.length > 0 ? candidates : sortedRemaining;
-        
+
         // Seleccionar jugadores con menos puntos
-        const minPoints = Math.min(...candidatePool.map(p => p.points));
-        const minPointCandidates = candidatePool.filter(p => p.points === minPoints);
-        
+        const minPoints = Math.min(...candidatePool.map((p) => p.points));
+        const minPointCandidates = candidatePool.filter((p) => p.points === minPoints);
+
         // Seleccionar aleatoriamente entre los candidatos
         const randomIndex = Math.floor(Math.random() * minPointCandidates.length);
         candidate = minPointCandidates[randomIndex];
@@ -411,7 +487,7 @@ const pairPlayers = (
 
       if (!candidate) return null;
 
-      const index = remaining.findIndex(p => p.id === candidate.id);
+      const index = remaining.findIndex((p) => p.id === candidate.id);
       if (index !== -1) {
         const newRemaining = [...remaining.slice(0, index), ...remaining.slice(index + 1)];
         const byeMatch: Match = { player1: candidate, player2: null, result: '' };
@@ -424,15 +500,18 @@ const pairPlayers = (
     for (let i = 1; i < remaining.length; i++) {
       const candidate = remaining[i];
 
-      const isTeammate = teamMode && areTeammates({ teamMode, teams } as TournamentState, first.id, candidate.id);
+      const isTeammate =
+        teamMode && areTeammates({ teamMode, teams } as TournamentState, first.id, candidate.id);
       if (isTeammate) continue;
 
-      const hasPlayed = first.opponents.includes(candidate.id) || candidate.opponents.includes(first.id);
+      const hasPlayed =
+        first.opponents.includes(candidate.id) || candidate.opponents.includes(first.id);
       if (hasPlayed) continue;
 
       const isInvalid = invalidMatches.some(
-        match => (match.player1Id === first.id && match.player2Id === candidate.id) ||
-                 (match.player1Id === candidate.id && match.player2Id === first.id)
+        (match) =>
+          (match.player1Id === first.id && match.player2Id === candidate.id) ||
+          (match.player1Id === candidate.id && match.player2Id === first.id)
       );
       if (isInvalid) continue;
 

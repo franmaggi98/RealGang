@@ -4,10 +4,6 @@
   import PlayerList from '$lib/components/PlayerList.svelte';
   import MatchList from '$lib/components/MatchList.svelte';
 
-  import { pageTitle } from '../store/titleStore';
-
-  pageTitle.set('Tournament');
-
   let playerName = '';
   const maxNameLength = 19;
   let isModalOpen = false;
@@ -35,13 +31,13 @@
       alert('You need at least 2 players to start the tournament.');
       return;
     }
-    
+
     // Actualizar el store con el modo seleccionado
-    tournamentStore.update(state => ({
+    tournamentStore.update((state) => ({
       ...state,
       teamMode: tournamentMode === 'teams'
     }));
-    
+
     tournamentStore.startTournament();
   }
 
@@ -61,10 +57,10 @@
 
 <div class="container mx-auto p-4">
   {#if !$tournamentStore.tournamentStarted && !$tournamentStore.tournamentFinished}
-      <!-- Selector de modo -->
+    <!-- Selector de modo -->
     <div class="flex flex-col sm:flex-row items-center gap-4 mb-4">
       <div class="form-control w-full max-w-xs">
-          <span class="label-text">Tournament Mode</span>
+        <span class="label-text">Tournament Mode</span>
         <select bind:value={tournamentMode} class="select select-bordered w-full">
           <option value="individual">Individual</option>
           <option value="teams">Teams</option>
@@ -81,10 +77,9 @@
         on:keydown={(e) => e.key === 'Enter' && addPlayer()}
       />
       <button class="btn btn-primary" on:click={addPlayer}>Add Player</button>
-            <button class="btn btn-success" on:click={startTournament}>Start Tournament</button>
-
+      <button class="btn btn-success" on:click={startTournament}>Start Tournament</button>
     </div>
-    
+
     <PlayerList />
   {:else}
     <div class="flex items-center justify-between mb-4">
@@ -123,11 +118,13 @@
       {#if !$tournamentStore.tournamentFinished}
         <div class="flex flex-col sm:flex-row gap-4">
           <button class="btn btn-primary" on:click={submitResults}>Submit Results</button>
-          <button class="btn btn-error" on:click={() => (isModalOpen = true)}>End Tournament</button>
+          <button class="btn btn-error" on:click={() => (isModalOpen = true)}>End Tournament</button
+          >
         </div>
       {:else}
         <div>
-          <button class="btn btn-error" on:click={() => (isModalOpen = true)}>End Tournament</button>
+          <button class="btn btn-error" on:click={() => (isModalOpen = true)}>End Tournament</button
+          >
         </div>
       {/if}
     </div>

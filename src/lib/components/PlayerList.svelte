@@ -47,10 +47,10 @@
       tournamentStore.deletePlayer(playerId);
     }
   }
-  
+
   function getPlayerTeam(playerId: number) {
     if (!$tournamentStore.teamMode) return null;
-    
+
     for (const team of $tournamentStore.teams) {
       if (team.players.includes(playerId)) {
         return team.id;

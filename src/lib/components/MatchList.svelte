@@ -1,9 +1,9 @@
 <script lang="ts">
   import tournamentStore, { type Player } from '../../store/tournamentStore';
-  
+
   function getPlayerTeam(playerId: number) {
     if (!$tournamentStore.teamMode) return null;
-    
+
     for (const team of $tournamentStore.teams) {
       if (team.players.includes(playerId)) {
         return team.id;
@@ -11,7 +11,7 @@
     }
     return null;
   }
-  
+
   const swapPlayers = (player1Id: number, player2Id: number) => {
     tournamentStore.update((state) => {
       const updatedMatches = state.currentMatches.map((match) => {
@@ -83,7 +83,7 @@
           const team1 = getPlayerTeam(currentPlayerId);
           const team2 = getPlayerTeam(newPlayerId);
           if (team1 && team2 && team1 === team2) {
-            alert("Cannot swap with a teammate");
+            alert('Cannot swap with a teammate');
             return;
           }
         }
