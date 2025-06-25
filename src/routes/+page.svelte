@@ -1,12 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import Wheel from '$lib/components/Wheel.svelte';
-  import DicePoolModal from '$lib/components/DicePool.svelte';
   import tournamentStore from '../store/tournamentStore';
   import PlayerList from '$lib/components/PlayerList.svelte';
   import MatchList from '$lib/components/MatchList.svelte';
-  import TournamentResults from '$lib/components/TournamentResults.svelte';
-  import History from '$lib/components/History.svelte';
+
   import { pageTitle } from '../store/titleStore';
 
   pageTitle.set('Tournament');
@@ -14,24 +11,6 @@
   let playerName = '';
   const maxNameLength = 19;
   let isModalOpen = false;
-  let showWheelModal = false;
-  let showDiceModal = false;
-  let resultRoulette: string | null = '';
-  let diceResult: number | null = null;
-
-  $: wheelItems = $tournamentStore.players.map((player) => player.name);
-
-  const handleWheelResult = (event: CustomEvent<string>) => {
-    resultRoulette = event.detail;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('resultRoulette', resultRoulette);
-    }
-  };
-
-  const handleDiceResult = (event: CustomEvent<number>) => {
-    diceResult = event.detail;
-    console.log('Dice result:', diceResult);
-  };
 
   onMount(() => {
     tournamentStore.loadFromLocalStorage();
@@ -74,7 +53,6 @@
 
 <div class="container mx-auto p-4">
   {#if !$tournamentStore.tournamentStarted && !$tournamentStore.tournamentFinished}
-    <!-- ADD PLAYER / START TOURNAMENT -->
     <div class="flex flex-col sm:flex-row items-center gap-4 mb-4">
       <input
         type="text"
@@ -89,10 +67,6 @@
     </div>
     <PlayerList />
   {:else}
-    <!-- HEADER CONTROLS -->
-    <div class="text-center text-lg font-bold flex flex-row items-center">
-      Round: {$tournamentStore.roundNumber}
-    </div>
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-4">
         {#if !$tournamentStore.tournamentFinished}
@@ -116,47 +90,29 @@
           {/if}
         </h3>
       </div>
-      <!-- ROUND + RESULTS + ACTIONS -->
-      <div
-        class="text-center text-lg font-bold mb-4 flex flex-row sm:flex-col justify-center items-center gap-4"
-      >
-        {#if !$tournamentStore.tournamentFinished}
-          <div class="flex flex-col sm:flex-row gap-4">
-            <button class="btn btn-primary" on:click={submitResults}>Submit Results</button>
-            <button class="btn btn-error" on:click={() => (isModalOpen = true)}
-              >End Tournament</button
-            >
-          </div>
-        {:else}
-          <div>
-            <button class="btn btn-error" on:click={() => (isModalOpen = true)}
-              >End Tournament</button
-            >
-          </div>
-        {/if}
+      <div class="text-center text-2xl font-bold flex flex-row items-center text-success">
+        Round: {$tournamentStore.roundNumber}
       </div>
     </div>
-
-    <!-- MATCHES GRID -->
     <div
       class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 gap-4 mb-8"
     >
       <MatchList />
     </div>
-    <div class="flex justify-center my-8">
-      <TournamentResults />
+    <div class="text-center text-lg font-bold mb-4 flex flex-row justify-center items-center gap-4">
+      {#if !$tournamentStore.tournamentFinished}
+        <div class="flex flex-col sm:flex-row gap-4">
+          <button class="btn btn-primary" on:click={submitResults}>Submit Results</button>
+          <button class="btn btn-error" on:click={() => (isModalOpen = true)}>End Tournament</button
+          >
+        </div>
+      {:else}
+        <div>
+          <button class="btn btn-error" on:click={() => (isModalOpen = true)}>End Tournament</button
+          >
+        </div>
+      {/if}
     </div>
-
-    <div class="mt-4 flex flex-col sm:flex-row gap-4 justify-center">
-      <button class="btn btn-secondary flex-1 sm:flex-none" on:click={() => (showWheelModal = true)}
-        >Spin Wheel</button
-      >
-      <button class="btn btn-success flex-1 sm:flex-none" on:click={() => (showDiceModal = true)}
-        >Roll Dice</button
-      >
-    </div>
-
-    <History />
 
     {#if isModalOpen}
       <dialog class="modal modal-open">
@@ -171,18 +127,6 @@
           </div>
         </div>
       </dialog>
-    {/if}
-
-    {#if showWheelModal}
-      <Wheel
-        items={wheelItems}
-        on:result={handleWheelResult}
-        on:close={() => (showWheelModal = false)}
-      />
-    {/if}
-
-    {#if showDiceModal}
-      <DicePoolModal on:result={handleDiceResult} on:close={() => (showDiceModal = false)} />
     {/if}
   {/if}
 </div>

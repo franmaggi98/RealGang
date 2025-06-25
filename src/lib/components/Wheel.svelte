@@ -105,7 +105,6 @@
       >
         <svg viewBox="0 0 300 300" class="w-full h-full rounded-full">
           <g transform="rotate({$rotation}, 150, 150)">
-            <!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
             {#each items as _, index}
               <path
                 d={describeArc(

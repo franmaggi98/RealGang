@@ -2,9 +2,7 @@
   import { derived } from 'svelte/store';
   import tournamentStore from '../../store/tournamentStore';
 
-  // Agrupa el historial por ronda y captura snapshots de nombres de decks al momento de jugar
   const history = derived(tournamentStore, ($s) => {
-    // Mapa para agrupar
     const roundsMap = new Map<
       number,
       {
@@ -20,7 +18,6 @@
     >();
 
     $s.history.forEach((h) => {
-      // Solo procesar si aún no se agregó esta ronda
       if (!roundsMap.has(h.roundNumber)) {
         const matches = h.currentMatches.map((m) => {
           const deck1 = m.player1.decks.find((d) => d.id === m.deck1Id);
@@ -37,7 +34,6 @@
       }
     });
 
-    // Ordenar rondas ascendente y devolver array
     return Array.from(roundsMap.values()).sort((a, b) => a.round - b.round);
   });
 </script>

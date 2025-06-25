@@ -25,12 +25,10 @@
   function addDeck() {
     if (!activePlayer) return;
 
-    // Aplicar trim y limitar longitud
     const deckName = newDeckName.trim();
 
     if (!deckName) return;
 
-    // Validar longitud máxima
     if (deckName.length > 30) {
       alert('El nombre del deck no puede exceder los 30 caracteres');
       return;
@@ -86,7 +84,6 @@
   {/each}
 </div>
 
-<!-- Modal DaisyUI usando <dialog> -->
 <dialog id="add-deck-modal" class="modal">
   <div class="modal-box">
     <h3 class="font-bold text-lg mb-4">Añadir Deck a {activePlayer?.name || 'jugador'}</h3>

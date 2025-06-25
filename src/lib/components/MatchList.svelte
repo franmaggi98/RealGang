@@ -74,7 +74,6 @@
 
 {#each $tournamentStore.currentMatches as match, index (index)}
   <div class="flex flex-col mb-4 p-4 border rounded-lg w-full justify-center">
-    <!-- Resultado arriba -->
     {#if match.player2}
       <div class="mb-4 flex justify-center">
         <select bind:value={match.result} class="select select-bordered w-full">
@@ -87,10 +86,7 @@
     {:else}
       <div class="mb-4 text-center font-bold text-success">Victoria automática (Bye)</div>
     {/if}
-
-    <!-- Jugadores abajo -->
     <div class="flex flex-col items-center space-y-4 lg:space-y-0 lg:space-x-4">
-      <!-- Jugador 1 y deck -->
       <div class="flex-1 w-full">
         <div class="dropdown w-full">
           <button class="btn btn-block w-full">{match.player1.name}</button>
@@ -104,7 +100,6 @@
             {/each}
           </ul>
         </div>
-        <!-- Selector de deck 1 -->
         {#if match.player2}
           <select class="select select-bordered w-full mt-2" bind:value={match.deck1Id}>
             <option value={null} selected={match.deck1Id == null}>–</option>
@@ -114,11 +109,7 @@
           </select>
         {/if}
       </div>
-
       <span class="text-lg">vs</span>
-
-      <!-- Jugador 2 y deck -->
-
       <div class="flex-1 w-full">
         {#if match.player2}
           <div class="dropdown w-full">
@@ -133,7 +124,6 @@
               {/each}
             </ul>
           </div>
-          <!-- Selector de deck 2 -->
           <select class="select select-bordered w-full mt-2" bind:value={match.deck2Id}>
             <option value={null} selected={match.deck2Id == null}>–</option>
             {#each match.player2.decks as deck}

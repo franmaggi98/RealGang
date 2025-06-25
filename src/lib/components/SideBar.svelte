@@ -61,9 +61,13 @@
         </svg>
       </button>
       <div class="divider m-0 p-0" />
-      <li><a href="/">Homepage</a></li>
+      <li><a href="/">Tournament</a></li>
       <div><div class="divider m-0 p-0" /></div>
-      <li><a href="/profile">Profile</a></li>
+      <li><a href="/results">Results</a></li>
+      <div><div class="divider m-0 p-0" /></div>
+      <li><a href="/history">History</a></li>
+      <div><div class="divider m-0 p-0" /></div>
+      <li><a href="/tools">Tools</a></li>
     </ul>
   </div>
 </div>
