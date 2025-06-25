@@ -1,57 +1,122 @@
 <script lang="ts">
-  import tournamentStore from '../../store/tournamentStore';
+  import tournamentStore, { type Player } from '../../store/tournamentStore';
+  import { onMount } from 'svelte';
+
+  let activePlayer: Player | null = null;
+  let newDeckName = '';
+  let addDeckModal: HTMLDialogElement;
+
+  onMount(() => {
+    addDeckModal = document.getElementById('add-deck-modal') as HTMLDialogElement;
+  });
+
+  function openAddDeckModal(player: Player) {
+    activePlayer = player;
+    newDeckName = '';
+    addDeckModal.showModal();
+  }
+
+  function closeAddDeckModal() {
+    addDeckModal.close();
+    activePlayer = null;
+    newDeckName = '';
+  }
+
+  function addDeck() {
+    if (!activePlayer) return;
+
+    // Aplicar trim y limitar longitud
+    const deckName = newDeckName.trim();
+
+    if (!deckName) return;
+
+    // Validar longitud máxima
+    if (deckName.length > 30) {
+      alert('El nombre del deck no puede exceder los 30 caracteres');
+      return;
+    }
+
+    tournamentStore.addDeckToPlayer(activePlayer.id, deckName);
+    closeAddDeckModal();
+  }
+
+  function removeDeck(playerId: number, deckId: number) {
+    tournamentStore.removeDeckFromPlayer(playerId, deckId);
+  }
+
+  function deletePlayer(playerId: number) {
+    if (confirm('¿Eliminar jugador y todos sus datos?')) {
+      tournamentStore.deletePlayer(playerId);
+    }
+  }
 </script>
 
-<div class="overflow-x-auto w-full sm:w-3/4 lg:w-1/2 mx-auto rounded shadow">
-  <table class="table table-zebra w-full">
-    <thead>
-      <tr>
-        <th class="w-2/12">ID</th>
-        <th class="text-start">Name</th>
-        <th class="w-2/12">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {#each $tournamentStore.players as player (player.id)}
-        <tr>
-          <td>{player.id}</td>
-          <td>{player.name}</td>
-          <td>
-            <button class="btn btn-ghost" on:click={() => tournamentStore.deletePlayer(player.id)}>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                x="0px"
-                y="0px"
-                width="32"
-                height="32"
-                viewBox="0,0,256,256"
+<div class="space-y-4">
+  {#each $tournamentStore.players as player}
+    <div
+      class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-base-200 rounded-lg"
+    >
+      <div class="flex-1">
+        <p class="text-lg font-semibold">{player.name}</p>
+        <div class="flex flex-wrap gap-2 mt-2">
+          {#each player.decks as deck}
+            <span class="badge badge-secondary flex items-center gap-1">
+              {deck.name}
+              <button
+                class="btn btn-xs btn-circle btn-ghost"
+                on:click={() => removeDeck(player.id, deck.id)}
+                aria-label="Eliminar deck"
               >
-                <g
-                  fill="#ff0000"
-                  fill-rule="nonzero"
-                  stroke="none"
-                  stroke-width="1"
-                  stroke-linecap="butt"
-                  stroke-linejoin="miter"
-                  stroke-miterlimit="10"
-                  stroke-dasharray=""
-                  stroke-dashoffset="0"
-                  font-family="none"
-                  font-weight="none"
-                  font-size="none"
-                  text-anchor="none"
-                  style="mix-blend-mode: normal"
-                  ><g transform="scale(8.53333,8.53333)"
-                    ><path
-                      d="M14.98438,2.48633c-0.55152,0.00862 -0.99193,0.46214 -0.98437,1.01367v0.5h-5.5c-0.26757,-0.00363 -0.52543,0.10012 -0.71593,0.28805c-0.1905,0.18793 -0.29774,0.44436 -0.29774,0.71195h-1.48633c-0.36064,-0.0051 -0.69608,0.18438 -0.87789,0.49587c-0.18181,0.3115 -0.18181,0.69676 0,1.00825c0.18181,0.3115 0.51725,0.50097 0.87789,0.49587h18c0.36064,0.0051 0.69608,-0.18438 0.87789,-0.49587c0.18181,-0.3115 0.18181,-0.69676 0,-1.00825c-0.18181,-0.3115 -0.51725,-0.50097 -0.87789,-0.49587h-1.48633c0,-0.26759 -0.10724,-0.52403 -0.29774,-0.71195c-0.1905,-0.18793 -0.44836,-0.29168 -0.71593,-0.28805h-5.5v-0.5c0.0037,-0.2703 -0.10218,-0.53059 -0.29351,-0.72155c-0.19133,-0.19097 -0.45182,-0.29634 -0.72212,-0.29212zM6,9l1.79297,15.23438c0.118,1.007 0.97037,1.76563 1.98438,1.76563h10.44531c1.014,0 1.86538,-0.75862 1.98438,-1.76562l1.79297,-15.23437z"
-                    ></path></g
-                  ></g
-                >
-              </svg>
-            </button>
-          </td>
-        </tr>
-      {/each}
-    </tbody>
-  </table>
+                ✕
+              </button>
+            </span>
+          {/each}
+        </div>
+      </div>
+
+      <div class="flex gap-2 mt-4 sm:mt-0">
+        <button class="btn btn-sm btn-outline" on:click={() => openAddDeckModal(player)}>
+          + Añadir Deck
+        </button>
+        <button class="btn btn-sm btn-error" on:click={() => deletePlayer(player.id)}>
+          Eliminar Jugador
+        </button>
+      </div>
+    </div>
+  {/each}
 </div>
+
+<!-- Modal DaisyUI usando <dialog> -->
+<dialog id="add-deck-modal" class="modal">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg mb-4">Añadir Deck a {activePlayer?.name || 'jugador'}</h3>
+
+    <div class="form-control">
+      <span class="label-text">Nombre del deck</span>
+      <input
+        type="text"
+        placeholder="Escribe el nombre aquí..."
+        bind:value={newDeckName}
+        class="input input-bordered w-full"
+        on:keydown={(e) => e.key === 'Enter' && addDeck()}
+        maxlength="30"
+      />
+      <!-- Mensaje de ayuda -->
+      <span class="text-xs text-gray-500 mt-1">
+        Máximo 30 caracteres ({newDeckName.length}/30)
+      </span>
+    </div>
+
+    <div class="modal-action">
+      <form method="dialog">
+        <button class="btn btn-ghost">Cancelar</button>
+      </form>
+      <button class="btn btn-primary" on:click={addDeck} disabled={!newDeckName.trim()}>
+        Añadir
+      </button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>

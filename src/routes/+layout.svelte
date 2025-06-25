@@ -6,6 +6,7 @@
 
   onMount(() => themeChange());
 </script>
+
 <Header />
 
 <slot />

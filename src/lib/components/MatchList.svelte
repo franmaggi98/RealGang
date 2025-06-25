@@ -1,5 +1,5 @@
 <script lang="ts">
-  import tournamentStore from '../../store/tournamentStore';
+  import tournamentStore, { type Player } from '../../store/tournamentStore';
   const swapPlayers = (player1Id: number, player2Id: number) => {
     tournamentStore.update((state) => {
       const updatedMatches = state.currentMatches.map((match) => {
@@ -73,61 +73,77 @@
 </script>
 
 {#each $tournamentStore.currentMatches as match, index (index)}
-  <div class="flex items-center justify-center my-1 space-x-2">
-    <div class="flex-1">
-      <div class="dropdown w-full">
-        <button type="button" class="btn w-full">
-          {match.player1.name}
-        </button>
-        <ul
-          role="menu"
-          class="dropdown-content menu bg-base-100 rounded-box z-10 w-full p-2 shadow-sm"
-        >
-          {#each $tournamentStore.players as player (player.id)}
-            <li role="menuitem">
-              <button on:click={() => handlePlayerChange(index, 'player1', player.id)}>
-                {player.name}
-              </button>
-            </li>
-          {/each}
-        </ul>
+  <div class="flex flex-col mb-4 p-4 border rounded-lg w-full justify-center">
+    <!-- Resultado arriba -->
+    {#if match.player2}
+      <div class="mb-4 flex justify-center">
+        <select bind:value={match.result} class="select select-bordered w-full">
+          <option value="" disabled>Selecciona resultado</option>
+          <option value="win">Gana {match.player1.name}</option>
+          <option value="draw">Empate</option>
+          <option value="loss">Gana {match.player2.name}</option>
+        </select>
       </div>
-    </div>
-    <span class="mx-2 self-center">vs</span>
-    <div class="flex-1">
-      <div class="dropdown w-full">
-        {#if match.player2}
-          <button type="button" class="btn w-full">
-            {match.player2.name}
-          </button>
-          <ul
-            role="menu"
-            class="dropdown-content menu bg-base-100 rounded-box z-10 w-full p-2 shadow-sm"
-          >
-            {#each $tournamentStore.players as player (player.id)}
-              <li role="menuitem">
-                <button on:click={() => handlePlayerChange(index, 'player2', player.id)}>
-                  {player.name}
+    {:else}
+      <div class="mb-4 text-center font-bold text-success">Victoria automática (Bye)</div>
+    {/if}
+
+    <!-- Jugadores abajo -->
+    <div class="flex flex-col items-center space-y-4 lg:space-y-0 lg:space-x-4">
+      <!-- Jugador 1 y deck -->
+      <div class="flex-1 w-full">
+        <div class="dropdown w-full">
+          <button class="btn btn-block w-full">{match.player1.name}</button>
+          <ul class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-full z-10">
+            {#each $tournamentStore.players as p}
+              <li>
+                <button on:click={() => handlePlayerChange(index, 'player1', p.id)}>
+                  {p.name}
                 </button>
               </li>
             {/each}
           </ul>
+        </div>
+        <!-- Selector de deck 1 -->
+        {#if match.player2}
+          <select class="select select-bordered w-full mt-2" bind:value={match.deck1Id}>
+            <option value={null} selected={match.deck1Id == null}>–</option>
+            {#each match.player1.decks as deck}
+              <option value={deck.id}>{deck.name}</option>
+            {/each}
+          </select>
+        {/if}
+      </div>
+
+      <span class="text-lg">vs</span>
+
+      <!-- Jugador 2 y deck -->
+
+      <div class="flex-1 w-full">
+        {#if match.player2}
+          <div class="dropdown w-full">
+            <button class="btn btn-block w-full">{match.player2.name}</button>
+            <ul class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-full z-10">
+              {#each $tournamentStore.players as p}
+                <li>
+                  <button on:click={() => handlePlayerChange(index, 'player2', p.id)}>
+                    {p.name}
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          </div>
+          <!-- Selector de deck 2 -->
+          <select class="select select-bordered w-full mt-2" bind:value={match.deck2Id}>
+            <option value={null} selected={match.deck2Id == null}>–</option>
+            {#each match.player2.decks as deck}
+              <option value={deck.id}>{deck.name}</option>
+            {/each}
+          </select>
         {:else}
-          <span class="text-lg">No Opponent (Bye)</span>
+          <div class="text-center italic py-4">Bye</div>
         {/if}
       </div>
     </div>
-  </div>
-  <div>
-    {#if match.player2 === null}
-      <div><div class="divider m-0 p-0" /></div>
-    {:else}
-      <select bind:value={match.result} class="select select-bordered w-full">
-        <option value="" disabled>Select Result</option>
-        <option value="win">Win {match.player1.name}</option>
-        <option value="draw">Draw</option>
-        <option value="loss">Win {match.player2.name}</option>
-      </select>
-    {/if}
   </div>
 {/each}

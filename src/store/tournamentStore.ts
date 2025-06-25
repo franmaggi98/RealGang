@@ -1,5 +1,9 @@
 import { writable } from 'svelte/store';
 
+export type Deck = {
+  id: number;
+  name: string;
+};
 // --- Types ---
 export type Player = {
   id: number;
@@ -10,11 +14,14 @@ export type Player = {
   victories: number;
   draws: number;
   tieBreaker?: boolean;
+  decks: Deck[]; // ← nueva propiedad
 };
 
 export type Match = {
   player1: Player;
   player2: Player | null;
+  deck1Id?: number; // ← deck seleccionado de player1
+  deck2Id?: number; // ← deck seleccionado de player2
   result: 'win' | 'loss' | 'draw' | '';
 };
 
@@ -54,12 +61,13 @@ const loadFromLocalStorage = () => {
     const storedTournamentFinished = localStorage.getItem('tournamentFinished');
     const storedCurrentMatches = localStorage.getItem('currentMatches');
     const storedInvalidMatches = localStorage.getItem('invalidMatches');
+    const storedHistory = localStorage.getItem('history');
 
     if (storedPlayers) {
-      tournamentStore.update((state) => ({
-        ...state,
-        players: JSON.parse(storedPlayers)
-      }));
+      const players: Player[] = JSON.parse(storedPlayers);
+      // Asegúrate de inicializar decks en players que no lo tuvieran
+      const playersWithDecks = players.map((p) => ({ ...p, decks: p.decks || [] }));
+      tournamentStore.update((s) => ({ ...s, players: playersWithDecks }));
     }
     if (storedRoundNumber) {
       tournamentStore.update((state) => ({
@@ -91,6 +99,12 @@ const loadFromLocalStorage = () => {
         }));
       }
     }
+    if (storedHistory) {
+      tournamentStore.update((state) => ({
+        ...state,
+        history: JSON.parse(storedHistory)
+      }));
+    }
   }
 };
 
@@ -103,8 +117,39 @@ const saveStateToLocalStorage = () => {
       localStorage.setItem('tournamentFinished', state.tournamentFinished.toString());
       localStorage.setItem('currentMatches', JSON.stringify(state.currentMatches));
       localStorage.setItem('invalidMatches', JSON.stringify(state.invalidMatches));
+      localStorage.setItem('history', JSON.stringify(state.history));
     }
   });
+};
+
+const addDeckToPlayer = (playerId: number, deckName: string) => {
+  tournamentStore.update((state) => {
+    const players = state.players.map((p) => {
+      if (p.id === playerId) {
+        const newDeck: Deck = {
+          id: p.decks.length > 0 ? Math.max(...p.decks.map((d) => d.id)) + 1 : 1,
+          name: deckName.trim()
+        };
+        return { ...p, decks: [...p.decks, newDeck] };
+      }
+      return p;
+    });
+    return { ...state, players };
+  });
+  saveStateToLocalStorage();
+};
+
+const removeDeckFromPlayer = (playerId: number, deckId: number) => {
+  tournamentStore.update((state) => {
+    const players = state.players.map((p) => {
+      if (p.id === playerId) {
+        return { ...p, decks: p.decks.filter((d) => d.id !== deckId) };
+      }
+      return p;
+    });
+    return { ...state, players };
+  });
+  saveStateToLocalStorage();
 };
 
 const addPlayer = (name: string) => {
@@ -134,7 +179,8 @@ const addPlayer = (name: string) => {
       opponents: [],
       opponentDifficulty: 0,
       victories: 0,
-      draws: 0
+      draws: 0,
+      decks: []
     };
 
     return { ...state, players: [...state.players, newPlayer] };
@@ -164,7 +210,8 @@ const startTournament = () => {
       roundNumber: 1,
       currentMatches: pairPlayersRandomly([...state.players], state.invalidMatches),
       invalidMatches: [],
-      retries: 0
+      retries: 0,
+      history: []
     };
   });
   saveStateToLocalStorage();
@@ -441,6 +488,7 @@ const previousRound = () => {
 
 export default {
   subscribe: tournamentStore.subscribe,
+  set: tournamentStore.set, // ✅ Añade esto
   loadFromLocalStorage,
   update: tournamentStore.update,
   addPlayer,
@@ -448,5 +496,7 @@ export default {
   startTournament,
   submitResults,
   resetTournament,
-  previousRound
+  previousRound,
+  addDeckToPlayer,
+  removeDeckFromPlayer
 };
