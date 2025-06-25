@@ -1,10 +1,9 @@
 {
-  "name": "portfolio-sveltekit",
+  "name": "realgang-sveltekit",
   "version": "0.0.1",
   "private": true,
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
     "preview": "vite preview",
     "test": "pnpm run test:integration && pnpm run test:unit",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -12,12 +11,15 @@
     "lint": "prettier --check . && eslint .",
     "format": "prettier --write .",
     "test:integration": "playwright test",
-    "test:unit": "vitest"
+    "test:unit": "vitest",
+    "build": "vite build",
+    "precap": "npm run build && npx cap sync",
+    "android": "npm run precap && npx cap open android"
   },
   "devDependencies": {
     "@playwright/test": "1.41.1",
     "@sveltejs/adapter-node": "4.0.1",
-    "@sveltejs/adapter-vercel": "^5.4.2",
+    "@sveltejs/adapter-static": "^3.0.8",
     "@sveltejs/kit": "2.5.0",
     "@sveltejs/vite-plugin-svelte": "3.0.2",
     "@tailwindcss/typography": "0.5.10",
@@ -43,6 +45,9 @@
   },
   "type": "module",
   "dependencies": {
+    "@capacitor/android": "^7.4.0",
+    "@capacitor/cli": "^7.4.0",
+    "@capacitor/core": "^7.4.0",
     "node-fetch": "3.3.2"
   }
 }

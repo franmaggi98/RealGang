@@ -8,7 +8,7 @@
       <div>
         <SidelBar />
       </div>
-      <div class="absolute left-1/2 -translate-x-1/2 hidden sm:block">
+      <div class="absolute left-1/2 -translate-x-1/2">
         <p class="text-3xl font-semibold">Tournament</p>
       </div>
     </div>

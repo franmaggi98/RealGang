@@ -91,11 +91,14 @@
       </div>
 
       <div class="flex gap-2 mt-4 sm:mt-0">
-        <button class="btn btn-sm btn-outline" on:click={() => openAddDeckModal(player)}>
-          + Add Deck
+        <button
+          class="btn btn-sm btn-outline btn-success"
+          on:click={() => openAddDeckModal(player)}
+        >
+          + Deck
         </button>
         <button class="btn btn-sm btn-error" on:click={() => deletePlayer(player.id)}>
-          Delete Player
+          Delete
         </button>
       </div>
     </div>

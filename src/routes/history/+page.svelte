@@ -7,4 +7,6 @@
   });
 </script>
 
-<History />
+<div class="container mx-auto p-4">
+  <History />
+</div>

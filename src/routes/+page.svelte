@@ -56,7 +56,7 @@
 <div class="container mx-auto p-4">
   {#if !$tournamentStore.tournamentStarted && !$tournamentStore.tournamentFinished}
     <!-- Selector de modo -->
-    <div class="flex flex-col sm:flex-row items-center gap-4 mb-4">
+    <div class="flex flex-col items-center gap-4 mb-4">
       <div class="form-control w-full max-w-xs">
         <span class="label-text">Tournament Mode</span>
         <select bind:value={tournamentMode} class="select select-bordered w-full">
@@ -65,17 +65,21 @@
         </select>
       </div>
     </div>
-    <div class="flex flex-col sm:flex-row items-center gap-4 mb-4">
+    <div class="flex flex-col items-center gap-4 mb-4">
       <input
         type="text"
         bind:value={playerName}
         maxlength={maxNameLength}
         placeholder="Enter player name"
-        class="input input-bordered flex-grow sm:flex-none"
+        class="input input-bordered flex-grow sm:flex-none w-full max-w-xs"
         on:keydown={(e) => e.key === 'Enter' && addPlayer()}
       />
-      <button class="btn btn-primary" on:click={addPlayer}>Add Player</button>
-      <button class="btn btn-success" on:click={startTournament}>Start Tournament</button>
+      <div class="flex gap-4 w-full justify-center">
+        <button class="btn btn-primary w-1/2 max-w-40" on:click={addPlayer}>Add Player</button>
+        <button class="btn btn-success w-1/2 max-w-40" on:click={startTournament}
+          >Start Tournament</button
+        >
+      </div>
     </div>
 
     <PlayerList />
