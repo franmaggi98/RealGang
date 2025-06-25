@@ -11,6 +11,7 @@
   let playerName = '';
   const maxNameLength = 19;
   let isModalOpen = false;
+  let tournamentMode: 'individual' | 'teams' = 'individual';
 
   onMount(() => {
     tournamentStore.loadFromLocalStorage();
@@ -34,6 +35,13 @@
       alert('You need at least 2 players to start the tournament.');
       return;
     }
+    
+    // Actualizar el store con el modo seleccionado
+    tournamentStore.update(state => ({
+      ...state,
+      teamMode: tournamentMode === 'teams'
+    }));
+    
     tournamentStore.startTournament();
   }
 
@@ -53,6 +61,16 @@
 
 <div class="container mx-auto p-4">
   {#if !$tournamentStore.tournamentStarted && !$tournamentStore.tournamentFinished}
+      <!-- Selector de modo -->
+    <div class="flex flex-col sm:flex-row items-center gap-4 mb-4">
+      <div class="form-control w-full max-w-xs">
+          <span class="label-text">Tournament Mode</span>
+        <select bind:value={tournamentMode} class="select select-bordered w-full">
+          <option value="individual">Individual</option>
+          <option value="teams">Teams</option>
+        </select>
+      </div>
+    </div>
     <div class="flex flex-col sm:flex-row items-center gap-4 mb-4">
       <input
         type="text"
@@ -63,8 +81,10 @@
         on:keydown={(e) => e.key === 'Enter' && addPlayer()}
       />
       <button class="btn btn-primary" on:click={addPlayer}>Add Player</button>
-      <button class="btn btn-success" on:click={startTournament}>Start Tournament</button>
+            <button class="btn btn-success" on:click={startTournament}>Start Tournament</button>
+
     </div>
+    
     <PlayerList />
   {:else}
     <div class="flex items-center justify-between mb-4">
@@ -78,7 +98,7 @@
               stroke-width="2"
               viewBox="0 0 24 24"
             >
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12l4-4m-4 4 4 4" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12l4-4m-4 4l4 4" />
             </svg>
           </button>
         {/if}
@@ -103,13 +123,11 @@
       {#if !$tournamentStore.tournamentFinished}
         <div class="flex flex-col sm:flex-row gap-4">
           <button class="btn btn-primary" on:click={submitResults}>Submit Results</button>
-          <button class="btn btn-error" on:click={() => (isModalOpen = true)}>End Tournament</button
-          >
+          <button class="btn btn-error" on:click={() => (isModalOpen = true)}>End Tournament</button>
         </div>
       {:else}
         <div>
-          <button class="btn btn-error" on:click={() => (isModalOpen = true)}>End Tournament</button
-          >
+          <button class="btn btn-error" on:click={() => (isModalOpen = true)}>End Tournament</button>
         </div>
       {/if}
     </div>

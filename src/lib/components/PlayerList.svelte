@@ -30,7 +30,7 @@
     if (!deckName) return;
 
     if (deckName.length > 30) {
-      alert('El nombre del deck no puede exceder los 30 caracteres');
+      alert('Deck name cannot exceed 30 characters');
       return;
     }
 
@@ -43,9 +43,20 @@
   }
 
   function deletePlayer(playerId: number) {
-    if (confirm('¿Eliminar jugador y todos sus datos?')) {
+    if (confirm('Delete player and all their data?')) {
       tournamentStore.deletePlayer(playerId);
     }
+  }
+  
+  function getPlayerTeam(playerId: number) {
+    if (!$tournamentStore.teamMode) return null;
+    
+    for (const team of $tournamentStore.teams) {
+      if (team.players.includes(playerId)) {
+        return team.id;
+      }
+    }
+    return null;
   }
 </script>
 
@@ -55,7 +66,14 @@
       class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-base-200 rounded-lg"
     >
       <div class="flex-1">
-        <p class="text-lg font-semibold">{player.name}</p>
+        <p class="text-lg font-semibold">
+          {player.name}
+          {#if $tournamentStore.teamMode}
+            <span class="text-sm text-gray-500 ml-2">
+              (Team {getPlayerTeam(player.id)})
+            </span>
+          {/if}
+        </p>
         <div class="flex flex-wrap gap-2 mt-2">
           {#each player.decks as deck}
             <span class="badge badge-secondary flex items-center gap-1">
@@ -63,7 +81,7 @@
               <button
                 class="btn btn-xs btn-circle btn-ghost"
                 on:click={() => removeDeck(player.id, deck.id)}
-                aria-label="Eliminar deck"
+                aria-label="Delete deck"
               >
                 ✕
               </button>
@@ -74,10 +92,10 @@
 
       <div class="flex gap-2 mt-4 sm:mt-0">
         <button class="btn btn-sm btn-outline" on:click={() => openAddDeckModal(player)}>
-          + Añadir Deck
+          + Add Deck
         </button>
         <button class="btn btn-sm btn-error" on:click={() => deletePlayer(player.id)}>
-          Eliminar Jugador
+          Delete Player
         </button>
       </div>
     </div>
@@ -86,30 +104,29 @@
 
 <dialog id="add-deck-modal" class="modal">
   <div class="modal-box">
-    <h3 class="font-bold text-lg mb-4">Añadir Deck a {activePlayer?.name || 'jugador'}</h3>
+    <h3 class="font-bold text-lg mb-4">Add Deck to {activePlayer?.name || 'player'}</h3>
 
     <div class="form-control">
-      <span class="label-text">Nombre del deck</span>
+      <span class="label-text">Deck name</span>
       <input
         type="text"
-        placeholder="Escribe el nombre aquí..."
+        placeholder="Enter deck name..."
         bind:value={newDeckName}
         class="input input-bordered w-full"
         on:keydown={(e) => e.key === 'Enter' && addDeck()}
         maxlength="30"
       />
-      <!-- Mensaje de ayuda -->
       <span class="text-xs text-gray-500 mt-1">
-        Máximo 30 caracteres ({newDeckName.length}/30)
+        Max 30 characters ({newDeckName.length}/30)
       </span>
     </div>
 
     <div class="modal-action">
       <form method="dialog">
-        <button class="btn btn-ghost">Cancelar</button>
+        <button class="btn btn-ghost">Cancel</button>
       </form>
       <button class="btn btn-primary" on:click={addDeck} disabled={!newDeckName.trim()}>
-        Añadir
+        Add
       </button>
     </div>
   </div>

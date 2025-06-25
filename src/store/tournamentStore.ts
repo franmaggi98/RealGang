@@ -4,7 +4,7 @@ export type Deck = {
   id: number;
   name: string;
 };
-// --- Types ---
+
 export type Player = {
   id: number;
   name: string;
@@ -14,20 +14,28 @@ export type Player = {
   victories: number;
   draws: number;
   tieBreaker?: boolean;
-  decks: Deck[]; // ← nueva propiedad
+  decks: Deck[];
+  byes: number;
+  teamId: number;
+  lastByeRound: number;
 };
 
 export type Match = {
   player1: Player;
   player2: Player | null;
-  deck1Id?: number; // ← deck seleccionado de player1
-  deck2Id?: number; // ← deck seleccionado de player2
+  deck1Id?: number;
+  deck2Id?: number;
   result: 'win' | 'loss' | 'draw' | '';
 };
 
 const maxRounds = 5;
 
 type InvalidMatch = { player1Id: number; player2Id: number };
+
+export type Team = {
+  id: number;
+  players: number[];
+};
 
 type TournamentState = {
   players: Player[];
@@ -38,6 +46,9 @@ type TournamentState = {
   invalidMatches: InvalidMatch[];
   retries: number;
   history: TournamentState[];
+  teamMode: boolean;
+  teams: Team[];
+  threePlayerTeamId: number | null;
 };
 
 const initialState: TournamentState = {
@@ -48,62 +59,27 @@ const initialState: TournamentState = {
   currentMatches: [],
   invalidMatches: [],
   retries: 0,
-  history: []
+  history: [],
+  teamMode: false,
+  teams: [],
+  threePlayerTeamId: null
 };
 
 const tournamentStore = writable<TournamentState>(initialState);
 
 const loadFromLocalStorage = () => {
   if (typeof window !== 'undefined') {
-    const storedPlayers = localStorage.getItem('players');
-    const storedRoundNumber = localStorage.getItem('roundNumber');
-    const storedTournamentStarted = localStorage.getItem('tournamentStarted');
-    const storedTournamentFinished = localStorage.getItem('tournamentFinished');
-    const storedCurrentMatches = localStorage.getItem('currentMatches');
-    const storedInvalidMatches = localStorage.getItem('invalidMatches');
-    const storedHistory = localStorage.getItem('history');
-
-    if (storedPlayers) {
-      const players: Player[] = JSON.parse(storedPlayers);
-      // Asegúrate de inicializar decks en players que no lo tuvieran
-      const playersWithDecks = players.map((p) => ({ ...p, decks: p.decks || [] }));
-      tournamentStore.update((s) => ({ ...s, players: playersWithDecks }));
-    }
-    if (storedRoundNumber) {
-      tournamentStore.update((state) => ({
-        ...state,
-        roundNumber: parseInt(storedRoundNumber, 10)
+    const storedState = localStorage.getItem('tournamentState');
+    if (storedState) {
+      const parsedState: TournamentState = JSON.parse(storedState);
+      parsedState.players = parsedState.players.map(p => ({
+        ...p,
+        decks: p.decks || [],
+        byes: p.byes || 0,
+        teamId: p.teamId || 0,
+        lastByeRound: p.lastByeRound || 0
       }));
-    }
-    if (storedTournamentStarted) {
-      tournamentStore.update((state) => ({
-        ...state,
-        tournamentStarted: storedTournamentStarted === 'true'
-      }));
-    }
-    if (storedTournamentFinished) {
-      tournamentStore.update((state) => ({
-        ...state,
-        tournamentFinished: storedTournamentFinished === 'true'
-      }));
-    }
-    if (storedCurrentMatches) {
-      tournamentStore.update((state) => ({
-        ...state,
-        currentMatches: JSON.parse(storedCurrentMatches)
-      }));
-      if (storedInvalidMatches) {
-        tournamentStore.update((state) => ({
-          ...state,
-          invalidMatches: JSON.parse(storedInvalidMatches)
-        }));
-      }
-    }
-    if (storedHistory) {
-      tournamentStore.update((state) => ({
-        ...state,
-        history: JSON.parse(storedHistory)
-      }));
+      tournamentStore.set(parsedState);
     }
   }
 };
@@ -111,13 +87,7 @@ const loadFromLocalStorage = () => {
 const saveStateToLocalStorage = () => {
   tournamentStore.subscribe((state) => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('players', JSON.stringify(state.players));
-      localStorage.setItem('roundNumber', state.roundNumber.toString());
-      localStorage.setItem('tournamentStarted', state.tournamentStarted.toString());
-      localStorage.setItem('tournamentFinished', state.tournamentFinished.toString());
-      localStorage.setItem('currentMatches', JSON.stringify(state.currentMatches));
-      localStorage.setItem('invalidMatches', JSON.stringify(state.invalidMatches));
-      localStorage.setItem('history', JSON.stringify(state.history));
+      localStorage.setItem('tournamentState', JSON.stringify(state));
     }
   });
 };
@@ -167,11 +137,6 @@ const addPlayer = (name: string) => {
       return state;
     }
 
-    const duplicateId = state.players.some((player) => player.id === state.players.length + 1);
-    if (duplicateId) {
-      return state;
-    }
-
     const newPlayer: Player = {
       id: state.players.length + 1,
       name: name.trim(),
@@ -180,7 +145,10 @@ const addPlayer = (name: string) => {
       opponentDifficulty: 0,
       victories: 0,
       draws: 0,
-      decks: []
+      decks: [],
+      byes: 0,
+      teamId: 0,
+      lastByeRound: 0
     };
 
     return { ...state, players: [...state.players, newPlayer] };
@@ -196,6 +164,43 @@ const deletePlayer = (playerId: number) => {
   saveStateToLocalStorage();
 };
 
+const createRandomTeams = (players: Player[]): { teams: Team[]; threePlayerTeamId: number | null } => {
+  const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
+  const teams: Team[] = [];
+  let threePlayerTeamId: number | null = null;
+  
+  for (let i = 0; i < shuffledPlayers.length; i += 2) {
+    if (i + 1 < shuffledPlayers.length) {
+      const teamId = teams.length + 1;
+      teams.push({
+        id: teamId,
+        players: [shuffledPlayers[i].id, shuffledPlayers[i + 1].id]
+      });
+    } else {
+      if (teams.length > 0) {
+        const lastTeam = teams[teams.length - 1];
+        lastTeam.players.push(shuffledPlayers[i].id);
+        threePlayerTeamId = lastTeam.id;
+      } else {
+        teams.push({ id: 1, players: [shuffledPlayers[i].id] });
+      }
+    }
+  }
+  
+  return { teams, threePlayerTeamId };
+};
+
+const areTeammates = (state: TournamentState, player1Id: number, player2Id: number): boolean => {
+  if (!state.teamMode) return false;
+  
+  for (const team of state.teams) {
+    if (team.players.includes(player1Id)) {
+      return team.players.includes(player2Id);
+    }
+  }
+  return false;
+};
+
 const startTournament = () => {
   tournamentStore.update((state) => {
     if (state.players.length < 2) {
@@ -203,12 +208,30 @@ const startTournament = () => {
       return state;
     }
 
+    const teamMode = state.teamMode;
+    const { teams, threePlayerTeamId } = teamMode ? createRandomTeams(state.players) : { teams: [], threePlayerTeamId: null };
+    
+    const playersWithTeams = state.players.map(player => {
+      if (teamMode) {
+        for (const team of teams) {
+          if (team.players.includes(player.id)) {
+            return { ...player, teamId: team.id };
+          }
+        }
+      }
+      return player;
+    });
+
     return {
       ...state,
+      players: playersWithTeams,
       tournamentStarted: true,
       tournamentFinished: false,
       roundNumber: 1,
-      currentMatches: pairPlayersRandomly([...state.players], state.invalidMatches),
+      teamMode,
+      teams,
+      threePlayerTeamId,
+      currentMatches: pairPlayers([...playersWithTeams], state.invalidMatches, teamMode, teams, threePlayerTeamId),
       invalidMatches: [],
       retries: 0,
       history: []
@@ -219,8 +242,7 @@ const startTournament = () => {
 
 const submitResults = () => {
   tournamentStore.update((state) => {
-    const { ...stateSnapshot } = state;
-    const stateClone = JSON.parse(JSON.stringify(stateSnapshot));
+    const stateClone = JSON.parse(JSON.stringify(state));
     state.history.push(stateClone);
 
     const allResultsSet = state.currentMatches.every(
@@ -238,8 +260,12 @@ const submitResults = () => {
       if (match.player2 === null) {
         const player1 = updatedPlayers.find((p) => p.id === match.player1.id);
         if (player1) {
-          player1.points += 2;
-          player1.victories += 1;
+          if (!state.teamMode) {
+            player1.points += 2;
+            player1.victories += 1;
+          }
+          player1.byes += 1;
+          player1.lastByeRound = state.roundNumber;
         }
       } else {
         const player1 = updatedPlayers.find((p) => p.id === match.player1.id);
@@ -288,7 +314,13 @@ const submitResults = () => {
       };
     } else {
       try {
-        const nextRoundMatches = pairPlayers([...playersWithTieBreakers], state.invalidMatches);
+        const nextRoundMatches = pairPlayers(
+          [...playersWithTieBreakers], 
+          state.invalidMatches, 
+          state.teamMode, 
+          state.teams,
+          state.threePlayerTeamId
+        );
         return {
           ...state,
           players: playersWithTieBreakers,
@@ -305,7 +337,6 @@ const submitResults = () => {
       }
     }
   });
-
   saveStateToLocalStorage();
 };
 
@@ -314,36 +345,77 @@ const resetTournament = () => {
   tournamentStore.set(initialState);
   saveStateToLocalStorage();
 };
+
 const pairPlayers = (
   players: Player[],
-  invalidMatches: Array<{ player1Id: number; player2Id: number }>
+  invalidMatches: InvalidMatch[],
+  teamMode: boolean,
+  teams: Team[],
+  threePlayerTeamId: number | null
 ): Match[] => {
-  const sortedPlayers = [...players].sort((a, b) => b.points - a.points);
+  // Verificar si es la primera ronda (todos los jugadores tienen 0 puntos)
+  const isFirstRound = players.every(player => player.points === 0);
+  
+  let sortedPlayers: Player[];
+  if (isFirstRound) {
+    // En la primera ronda, ordenar aleatoriamente
+    sortedPlayers = [...players].sort(() => Math.random() - 0.5);
+  } else {
+    // En rondas posteriores, ordenar por puntos y dificultad
+    sortedPlayers = [...players].sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      return b.opponentDifficulty - a.opponentDifficulty;
+    });
+  }
 
   const backtrackPairing = (remaining: Player[], currentPairs: Match[]): Match[] | null => {
     if (remaining.length === 0) return currentPairs;
 
     if (remaining.length % 2 !== 0) {
-      const sortedRemaining = [...remaining].sort((a, b) => a.points - b.points);
+      let candidate: Player | null = null;
+      
+      if (teamMode && threePlayerTeamId) {
+        // MODO EQUIPOS: selección de Bye solo del equipo de 3
+        const teamCandidates = remaining.filter(player => 
+          player.teamId === threePlayerTeamId
+        );
+        
+        if (teamCandidates.length > 0) {
+          // Priorizar al que no ha tenido Bye o lo tuvo hace más rondas
+          teamCandidates.sort((a, b) => a.lastByeRound - b.lastByeRound);
+          candidate = teamCandidates[0];
+        } else {
+          // Si no hay jugadores del equipo de 3, seleccionar cualquiera
+          candidate = remaining[0];
+        }
+      } else {
+        // MODO INDIVIDUAL: lógica original para selección de Bye
+        const sortedRemaining = [...remaining].sort((a, b) => a.points - b.points);
+        
+        // Filtrar jugadores que no han tenido Bye
+        const candidates = sortedRemaining.filter(player => 
+          !player.opponents.includes(-1) && player.byes === 0
+        );
 
-      const candidates = sortedRemaining.filter((player) => !player.opponents.includes(-1));
-      if (candidates.length === 0) return null;
+        // Si no hay jugadores sin Bye, usar todos
+        const candidatePool = candidates.length > 0 ? candidates : sortedRemaining;
+        
+        // Seleccionar jugadores con menos puntos
+        const minPoints = Math.min(...candidatePool.map(p => p.points));
+        const minPointCandidates = candidatePool.filter(p => p.points === minPoints);
+        
+        // Seleccionar aleatoriamente entre los candidatos
+        const randomIndex = Math.floor(Math.random() * minPointCandidates.length);
+        candidate = minPointCandidates[randomIndex];
+      }
 
-      const minPoints = Math.min(...candidates.map((p) => p.points));
-      const tiedCandidates = candidates.filter((p) => p.points === minPoints);
+      if (!candidate) return null;
 
-      const randomIndex = Math.floor(Math.random() * tiedCandidates.length);
-      const candidate = tiedCandidates[randomIndex];
-
-      const index = remaining.findIndex((p) => p.id === candidate.id);
+      const index = remaining.findIndex(p => p.id === candidate.id);
       if (index !== -1) {
         const newRemaining = [...remaining.slice(0, index), ...remaining.slice(index + 1)];
-
-        candidate.opponents.push(-1);
-
         const byeMatch: Match = { player1: candidate, player2: null, result: '' };
-        const result = backtrackPairing(newRemaining, [...currentPairs, byeMatch]);
-        if (result !== null) return result;
+        return backtrackPairing(newRemaining, [...currentPairs, byeMatch]);
       }
       return null;
     }
@@ -352,38 +424,31 @@ const pairPlayers = (
     for (let i = 1; i < remaining.length; i++) {
       const candidate = remaining[i];
 
-      const hasPlayed =
-        first.opponents.includes(candidate.id) || candidate.opponents.includes(first.id);
+      const isTeammate = teamMode && areTeammates({ teamMode, teams } as TournamentState, first.id, candidate.id);
+      if (isTeammate) continue;
+
+      const hasPlayed = first.opponents.includes(candidate.id) || candidate.opponents.includes(first.id);
+      if (hasPlayed) continue;
 
       const isInvalid = invalidMatches.some(
-        (match) =>
-          (match.player1Id === first.id && match.player2Id === candidate.id) ||
-          (match.player1Id === candidate.id && match.player2Id === first.id)
+        match => (match.player1Id === first.id && match.player2Id === candidate.id) ||
+                 (match.player1Id === candidate.id && match.player2Id === first.id)
       );
+      if (isInvalid) continue;
 
-      if (!hasPlayed && !isInvalid) {
-        const newRemaining = [...remaining.slice(1, i), ...remaining.slice(i + 1)];
-        const newPair: Match = { player1: first, player2: candidate, result: '' };
-        const result = backtrackPairing(newRemaining, [...currentPairs, newPair]);
-        if (result !== null) return result;
-      }
+      const newRemaining = [...remaining.slice(1, i), ...remaining.slice(i + 1)];
+      const newPair: Match = { player1: first, player2: candidate, result: '' };
+      const result = backtrackPairing(newRemaining, [...currentPairs, newPair]);
+      if (result !== null) return result;
     }
     return null;
   };
 
   const result = backtrackPairing(sortedPlayers, []);
   if (result === null) {
-    throw new Error('No se pudo encontrar un emparejamiento válido.');
+    throw new Error('No valid pairing found.');
   }
   return result;
-};
-
-const pairPlayersRandomly = (
-  players: Player[],
-  invalidMatches: Array<{ player1Id: number; player2Id: number }>
-): Match[] => {
-  const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
-  return pairPlayers(shuffledPlayers, invalidMatches);
 };
 
 const breakTies = (players: Player[], matches: Match[]): Player[] => {
@@ -441,6 +506,7 @@ const findDirectMatch = (playerA: Player, playerB: Player, matches: Match[]): Ma
 
   return directMatch || null;
 };
+
 const calculateOpponentDifficulty = (player: Player, allPlayers: Player[]): number => {
   let difficultySum = player.points;
   const weight = 0.5;
@@ -471,7 +537,7 @@ const calculateOpponentDifficulty = (player: Player, allPlayers: Player[]): numb
 const previousRound = () => {
   tournamentStore.update((state) => {
     if (state.history.length === 0) {
-      alert('No hay rondas anteriores a las que volver.');
+      alert('No previous rounds to go back to.');
       return state;
     }
 
@@ -488,9 +554,9 @@ const previousRound = () => {
 
 export default {
   subscribe: tournamentStore.subscribe,
-  set: tournamentStore.set, // ✅ Añade esto
-  loadFromLocalStorage,
+  set: tournamentStore.set,
   update: tournamentStore.update,
+  loadFromLocalStorage,
   addPlayer,
   deletePlayer,
   startTournament,

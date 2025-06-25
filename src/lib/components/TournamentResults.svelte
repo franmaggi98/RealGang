@@ -6,7 +6,6 @@
   <table class="table table-zebra w-full border-1">
     <thead>
       <tr>
-        <th class="w-1">ID</th>
         <th>Name</th>
         <th>Points</th>
         <th>Victories</th>
@@ -15,9 +14,8 @@
       </tr>
     </thead>
     <tbody>
-      {#each $tournamentStore.players as player, index}
+      {#each $tournamentStore.players as player}
         <tr>
-          <td>{index + 1}</td>
           <td>{player.name}</td>
           <td>{player.points}</td>
           <td>{player.victories}</td>

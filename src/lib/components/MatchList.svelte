@@ -1,5 +1,17 @@
 <script lang="ts">
   import tournamentStore, { type Player } from '../../store/tournamentStore';
+  
+  function getPlayerTeam(playerId: number) {
+    if (!$tournamentStore.teamMode) return null;
+    
+    for (const team of $tournamentStore.teams) {
+      if (team.players.includes(playerId)) {
+        return team.id;
+      }
+    }
+    return null;
+  }
+  
   const swapPlayers = (player1Id: number, player2Id: number) => {
     tournamentStore.update((state) => {
       const updatedMatches = state.currentMatches.map((match) => {
@@ -66,6 +78,15 @@
       const currentPlayer = match[playerKey];
       if (currentPlayer) {
         const currentPlayerId = currentPlayer.id;
+        // Comprobar si el nuevo jugador es compañero de equipo
+        if ($tournamentStore.teamMode) {
+          const team1 = getPlayerTeam(currentPlayerId);
+          const team2 = getPlayerTeam(newPlayerId);
+          if (team1 && team2 && team1 === team2) {
+            alert("Cannot swap with a teammate");
+            return;
+          }
+        }
         swapPlayers(currentPlayerId, newPlayerId);
       }
     }
@@ -77,24 +98,34 @@
     {#if match.player2}
       <div class="mb-4 flex justify-center">
         <select bind:value={match.result} class="select select-bordered w-full">
-          <option value="" disabled>Selecciona resultado</option>
-          <option value="win">Gana {match.player1.name}</option>
-          <option value="draw">Empate</option>
-          <option value="loss">Gana {match.player2.name}</option>
+          <option value="" disabled>Select result</option>
+          <option value="win">Win for {match.player1.name}</option>
+          <option value="draw">Draw</option>
+          <option value="loss">Win for {match.player2.name}</option>
         </select>
       </div>
     {:else}
-      <div class="mb-4 text-center font-bold text-success">Victoria automática (Bye)</div>
+      <div class="mb-4 text-center font-bold text-success">Bye</div>
     {/if}
     <div class="flex flex-col items-center space-y-4 lg:space-y-0 lg:space-x-4">
       <div class="flex-1 w-full">
         <div class="dropdown w-full">
-          <button class="btn btn-block w-full">{match.player1.name}</button>
+          <button class="btn btn-block w-full">
+            {match.player1.name}
+            {#if $tournamentStore.teamMode}
+              <span class="text-sm text-gray-500 ml-2">
+                (Team {getPlayerTeam(match.player1.id)})
+              </span>
+            {/if}
+          </button>
           <ul class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-full z-10">
             {#each $tournamentStore.players as p}
               <li>
                 <button on:click={() => handlePlayerChange(index, 'player1', p.id)}>
                   {p.name}
+                  {#if $tournamentStore.teamMode}
+                    <span class="text-xs">(Team {getPlayerTeam(p.id)})</span>
+                  {/if}
                 </button>
               </li>
             {/each}
@@ -113,12 +144,22 @@
       <div class="flex-1 w-full">
         {#if match.player2}
           <div class="dropdown w-full">
-            <button class="btn btn-block w-full">{match.player2.name}</button>
+            <button class="btn btn-block w-full">
+              {match.player2.name}
+              {#if $tournamentStore.teamMode}
+                <span class="text-sm text-gray-500 ml-2">
+                  (Team {getPlayerTeam(match.player2.id)})
+                </span>
+              {/if}
+            </button>
             <ul class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-full z-10">
               {#each $tournamentStore.players as p}
                 <li>
                   <button on:click={() => handlePlayerChange(index, 'player2', p.id)}>
                     {p.name}
+                    {#if $tournamentStore.teamMode}
+                      <span class="text-xs">(Team {getPlayerTeam(p.id)})</span>
+                    {/if}
                   </button>
                 </li>
               {/each}
