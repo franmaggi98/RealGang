@@ -100,7 +100,6 @@ const loadFromLocalStorage = () => {
     }
     if (storedPlayers) {
       const players: Player[] = JSON.parse(storedPlayers);
-      // Asegúrate de inicializar decks en players que no lo tuvieran
       const playersWithDecks = players.map((p) => ({ ...p, decks: p.decks || [] }));
       tournamentStore.update((s) => ({ ...s, players: playersWithDecks }));
     }
@@ -431,15 +430,11 @@ const pairPlayers = (
   teams: Team[],
   threePlayerTeamId: number | null
 ): Match[] => {
-  // Verificar si es la primera ronda (todos los jugadores tienen 0 puntos)
   const isFirstRound = players.every((player) => player.points === 0);
-
   let sortedPlayers: Player[];
   if (isFirstRound) {
-    // En la primera ronda, ordenar aleatoriamente
     sortedPlayers = [...players].sort(() => Math.random() - 0.5);
   } else {
-    // En rondas posteriores, ordenar por puntos y dificultad
     sortedPlayers = [...players].sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points;
       return b.opponentDifficulty - a.opponentDifficulty;
@@ -451,42 +446,26 @@ const pairPlayers = (
 
     if (remaining.length % 2 !== 0) {
       let candidate: Player | null = null;
-
       if (teamMode && threePlayerTeamId) {
-        // MODO EQUIPOS: selección de Bye solo del equipo de 3
         const teamCandidates = remaining.filter((player) => player.teamId === threePlayerTeamId);
-
         if (teamCandidates.length > 0) {
-          // Priorizar al que no ha tenido Bye o lo tuvo hace más rondas
           teamCandidates.sort((a, b) => a.lastByeRound - b.lastByeRound);
           candidate = teamCandidates[0];
         } else {
-          // Si no hay jugadores del equipo de 3, seleccionar cualquiera
           candidate = remaining[0];
         }
       } else {
-        // MODO INDIVIDUAL: lógica original para selección de Bye
         const sortedRemaining = [...remaining].sort((a, b) => a.points - b.points);
-
-        // Filtrar jugadores que no han tenido Bye
         const candidates = sortedRemaining.filter(
           (player) => !player.opponents.includes(-1) && player.byes === 0
         );
-
-        // Si no hay jugadores sin Bye, usar todos
         const candidatePool = candidates.length > 0 ? candidates : sortedRemaining;
-
-        // Seleccionar jugadores con menos puntos
         const minPoints = Math.min(...candidatePool.map((p) => p.points));
         const minPointCandidates = candidatePool.filter((p) => p.points === minPoints);
-
-        // Seleccionar aleatoriamente entre los candidatos
         const randomIndex = Math.floor(Math.random() * minPointCandidates.length);
         candidate = minPointCandidates[randomIndex];
       }
-
       if (!candidate) return null;
-
       const index = remaining.findIndex((p) => p.id === candidate.id);
       if (index !== -1) {
         const newRemaining = [...remaining.slice(0, index), ...remaining.slice(index + 1)];
@@ -495,7 +474,6 @@ const pairPlayers = (
       }
       return null;
     }
-
     const first = remaining[0];
     for (let i = 1; i < remaining.length; i++) {
       const candidate = remaining[i];

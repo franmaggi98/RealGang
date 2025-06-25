@@ -78,7 +78,6 @@
       const currentPlayer = match[playerKey];
       if (currentPlayer) {
         const currentPlayerId = currentPlayer.id;
-        // Comprobar si el nuevo jugador es compañero de equipo
         if ($tournamentStore.teamMode) {
           const team1 = getPlayerTeam(currentPlayerId);
           const team2 = getPlayerTeam(newPlayerId);

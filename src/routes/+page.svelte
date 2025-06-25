@@ -31,8 +31,6 @@
       alert('You need at least 2 players to start the tournament.');
       return;
     }
-
-    // Actualizar el store con el modo seleccionado
     tournamentStore.update((state) => ({
       ...state,
       teamMode: tournamentMode === 'teams'
