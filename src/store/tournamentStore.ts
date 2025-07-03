@@ -111,7 +111,7 @@ const loadFromLocalStorage = () => {
         ...p,
         decks: p.decks || [],
         gamesWon: p.gamesWon || 0,
-        gamesLost: p.gamesLost || 0,
+        gamesLost: p.gamesLost || 0
       }));
       tournamentStore.update((s) => ({ ...s, players: playersWithDefaults }));
     }
@@ -229,7 +229,7 @@ const addPlayer = (name: string) => {
       teamId: 0,
       lastByeRound: 0,
       gamesWon: 0,
-      gamesLost: 0,
+      gamesLost: 0
     };
 
     return { ...state, players: [...state.players, newPlayer] };
