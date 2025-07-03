@@ -3,6 +3,7 @@
   import tournamentStore from '../store/tournamentStore';
   import PlayerList from '$lib/components/PlayerList.svelte';
   import MatchList from '$lib/components/MatchList.svelte';
+  import History from '$lib/components/History.svelte';
 
   let playerName = '';
   const maxNameLength = 19;
@@ -45,6 +46,19 @@
   }
 
   function submitResults() {
+    // Validar resultados antes de enviar
+    const allValid = $tournamentStore.currentMatches.every((match) => {
+      if (!match.player2) return true; // Bye siempre es válido
+      if (!match.result) return false;
+      const { games1, games2 } = match.result;
+      return games1 !== undefined && games2 !== undefined && games1 + games2 <= 3;
+    });
+
+    if (!allValid) {
+      alert('Invalid results. Please check all matches have valid scores (max 3 games).');
+      return;
+    }
+
     tournamentStore.submitResults();
   }
 

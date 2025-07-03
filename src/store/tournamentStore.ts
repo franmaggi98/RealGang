@@ -5,6 +5,11 @@ export type Deck = {
   name: string;
 };
 
+export type MatchResult = {
+  games1: number;
+  games2: number;
+};
+
 export type Player = {
   id: number;
   name: string;
@@ -18,6 +23,10 @@ export type Player = {
   byes: number;
   teamId: number;
   lastByeRound: number;
+  // Nuevas propiedades para estadísticas detalladas
+  gamesWon: number;
+  gamesLost: number;
+  cleanWins: number;
 };
 
 export type Match = {
@@ -25,7 +34,7 @@ export type Match = {
   player2: Player | null;
   deck1Id?: number;
   deck2Id?: number;
-  result: 'win' | 'loss' | 'draw' | '';
+  result: MatchResult | null;
 };
 
 const maxRounds = 5;
@@ -100,8 +109,14 @@ const loadFromLocalStorage = () => {
     }
     if (storedPlayers) {
       const players: Player[] = JSON.parse(storedPlayers);
-      const playersWithDecks = players.map((p) => ({ ...p, decks: p.decks || [] }));
-      tournamentStore.update((s) => ({ ...s, players: playersWithDecks }));
+      const playersWithDefaults = players.map((p) => ({
+        ...p,
+        decks: p.decks || [],
+        gamesWon: p.gamesWon || 0,
+        gamesLost: p.gamesLost || 0,
+        cleanWins: p.cleanWins || 0
+      }));
+      tournamentStore.update((s) => ({ ...s, players: playersWithDefaults }));
     }
     if (storedRoundNumber) {
       tournamentStore.update((state) => ({
@@ -215,7 +230,10 @@ const addPlayer = (name: string) => {
       decks: [],
       byes: 0,
       teamId: 0,
-      lastByeRound: 0
+      lastByeRound: 0,
+      gamesWon: 0,
+      gamesLost: 0,
+      cleanWins: 0
     };
 
     return { ...state, players: [...state.players, newPlayer] };
@@ -322,8 +340,9 @@ const submitResults = () => {
     const stateClone = JSON.parse(JSON.stringify(state));
     state.history.push(stateClone);
 
+    // Verificar que todos los partidos tengan resultado (excepto bye)
     const allResultsSet = state.currentMatches.every(
-      (match) => match.result !== '' || match.player2 === null
+      (match) => match.result !== null || match.player2 === null
     );
 
     if (!allResultsSet) {
@@ -335,53 +354,81 @@ const submitResults = () => {
 
     state.currentMatches.forEach((match) => {
       if (match.player2 === null) {
+        // Manejo de Bye (considerado como 2-0)
         const player1 = updatedPlayers.find((p) => p.id === match.player1.id);
         if (player1) {
-          if (!state.teamMode) {
-            player1.points += 2;
-            player1.victories += 1;
-          }
+          player1.points += 2;
+          player1.victories += 1;
+          player1.gamesWon += 2;
+          player1.cleanWins += 1;
           player1.byes += 1;
           player1.lastByeRound = state.roundNumber;
         }
-      } else {
+      } else if (match.result) {
+        const { games1, games2 } = match.result;
         const player1 = updatedPlayers.find((p) => p.id === match.player1.id);
         const player2 = updatedPlayers.find((p) => p.id === match.player2!.id);
 
         if (player1 && player2) {
-          if (match.result === 'win') {
+          // Registrar juegos individuales
+          player1.gamesWon += games1;
+          player1.gamesLost += games2;
+          player2.gamesWon += games2;
+          player2.gamesLost += games1;
+
+          // Calcular resultado basado en juegos
+          const player1Wins = games1 > games2;
+          const isDraw = games1 === games2;
+
+          // Asignar puntos
+          if (player1Wins) {
             player1.points += 2;
             player1.victories += 1;
-          } else if (match.result === 'loss') {
-            player2.points += 2;
-            player2.victories += 1;
-          } else if (match.result === 'draw') {
+
+            // Registrar victorias limpias (2-0)
+            if (games1 === 2 && games2 === 0) {
+              player1.cleanWins += 1;
+            }
+          } else if (isDraw) {
             player1.points += 1;
             player2.points += 1;
             player1.draws += 1;
             player2.draws += 1;
+          } else {
+            player2.points += 2;
+            player2.victories += 1;
+
+            if (games2 === 2 && games1 === 0) {
+              player2.cleanWins += 1;
+            }
           }
 
+          // Registrar oponentes
           player1.opponents.push(player2.id);
           player2.opponents.push(player1.id);
 
+          // Registrar como partido inválido para futuros emparejamientos
           state.invalidMatches.push({ player1Id: player1.id, player2Id: player2.id });
         }
       }
     });
 
+    // Actualizar dificultad de oponentes
     updatedPlayers.forEach((player) => {
       player.opponentDifficulty = calculateOpponentDifficulty(player, updatedPlayers);
     });
 
+    // Ordenar jugadores por puntos, victorias y empates
     const sortedPlayers = updatedPlayers.sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points;
       if (b.victories !== a.victories) return b.victories - a.victories;
       return b.draws - a.draws;
     });
 
+    // Aplicar criterios de desempate
     const playersWithTieBreakers = breakTies(sortedPlayers, state.currentMatches);
 
+    // Verificar si el torneo ha terminado
     if (state.roundNumber >= maxRounds) {
       return {
         ...state,
@@ -391,6 +438,7 @@ const submitResults = () => {
       };
     } else {
       try {
+        // Generar nuevos emparejamientos
         const nextRoundMatches = pairPlayers(
           [...playersWithTieBreakers],
           state.invalidMatches,
@@ -398,6 +446,7 @@ const submitResults = () => {
           state.teams,
           state.threePlayerTeamId
         );
+
         return {
           ...state,
           players: playersWithTieBreakers,
@@ -405,6 +454,7 @@ const submitResults = () => {
           roundNumber: state.roundNumber + 1
         };
       } catch (error) {
+        // Si no se pueden generar emparejamientos, terminar torneo
         return {
           ...state,
           players: playersWithTieBreakers,
@@ -466,10 +516,10 @@ const pairPlayers = (
         candidate = minPointCandidates[randomIndex];
       }
       if (!candidate) return null;
-      const index = remaining.findIndex((p) => p.id === candidate.id);
+      const index = remaining.findIndex((p) => p.id === candidate!.id);
       if (index !== -1) {
         const newRemaining = [...remaining.slice(0, index), ...remaining.slice(index + 1)];
-        const byeMatch: Match = { player1: candidate, player2: null, result: '' };
+        const byeMatch: Match = { player1: candidate, player2: null, result: null };
         return backtrackPairing(newRemaining, [...currentPairs, byeMatch]);
       }
       return null;
@@ -494,7 +544,7 @@ const pairPlayers = (
       if (isInvalid) continue;
 
       const newRemaining = [...remaining.slice(1, i), ...remaining.slice(i + 1)];
-      const newPair: Match = { player1: first, player2: candidate, result: '' };
+      const newPair: Match = { player1: first, player2: candidate, result: null };
       const result = backtrackPairing(newRemaining, [...currentPairs, newPair]);
       if (result !== null) return result;
     }
@@ -510,47 +560,40 @@ const pairPlayers = (
 
 const breakTies = (players: Player[], matches: Match[]): Player[] => {
   return players.sort((a, b) => {
-    if (a.points !== b.points) {
-      return b.points - a.points;
-    }
-    if (a.points === b.points) {
-      const directMatch = findDirectMatch(a, b, matches);
-      if (directMatch) {
-        if (directMatch.player1.id === a.id && directMatch.result === 'win') {
-          a.tieBreaker = true;
-          return -1;
-        } else if (directMatch.player1.id === b.id && directMatch.result === 'win') {
-          b.tieBreaker = true;
-          return 1;
-        }
-      }
-      if (b.opponentDifficulty > a.opponentDifficulty) {
-        b.tieBreaker = true;
-        return 1;
-      } else if (a.opponentDifficulty > b.opponentDifficulty) {
-        a.tieBreaker = true;
-        return -1;
-      }
-      const aWins = a.opponents.filter((opponentId) => {
-        const opponent = players.find((p) => p.id === opponentId);
-        return opponent && opponent.points < a.points;
-      }).length;
+    // 1. Puntos totales
+    if (b.points !== a.points) return b.points - a.points;
 
-      const bWins = b.opponents.filter((opponentId) => {
-        const opponent = players.find((p) => p.id === opponentId);
-        return opponent && opponent.points < b.points;
-      }).length;
+    // 2. Número de victorias
+    if (b.victories !== a.victories) return b.victories - a.victories;
 
-      if (bWins > aWins) {
-        b.tieBreaker = true;
-        return 1;
-      } else if (aWins > bWins) {
-        a.tieBreaker = true;
-        return -1;
+    // 3. Enfrentamiento directo (resultado de juegos)
+    const directMatch = findDirectMatch(a, b, matches);
+    if (directMatch && directMatch.result) {
+      const { games1, games2 } = directMatch.result;
+      const aIsPlayer1 = directMatch.player1.id === a.id;
+
+      if (aIsPlayer1) {
+        if (games1 > games2) return -1;
+        if (games1 < games2) return 1;
+      } else {
+        if (games2 > games1) return -1;
+        if (games2 < games1) return 1;
       }
-      return 0;
     }
-    return 0;
+
+    // 4. Victorias limpias (2-0)
+    if (b.cleanWins !== a.cleanWins) return b.cleanWins - a.cleanWins;
+
+    // 5. Diferencia de juegos (games won - games lost)
+    const aDiff = a.gamesWon - a.gamesLost;
+    const bDiff = b.gamesWon - b.gamesLost;
+    if (bDiff !== aDiff) return bDiff - aDiff;
+
+    // 6. Más juegos ganados
+    if (b.gamesWon !== a.gamesWon) return b.gamesWon - a.gamesWon;
+
+    // 7. Dificultad de oponentes
+    return b.opponentDifficulty - a.opponentDifficulty;
   });
 };
 
