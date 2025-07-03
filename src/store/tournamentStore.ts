@@ -23,10 +23,8 @@ export type Player = {
   byes: number;
   teamId: number;
   lastByeRound: number;
-  // Nuevas propiedades para estadísticas detalladas
   gamesWon: number;
   gamesLost: number;
-  cleanWins: number;
 };
 
 export type Match = {
@@ -114,7 +112,6 @@ const loadFromLocalStorage = () => {
         decks: p.decks || [],
         gamesWon: p.gamesWon || 0,
         gamesLost: p.gamesLost || 0,
-        cleanWins: p.cleanWins || 0
       }));
       tournamentStore.update((s) => ({ ...s, players: playersWithDefaults }));
     }
@@ -233,7 +230,6 @@ const addPlayer = (name: string) => {
       lastByeRound: 0,
       gamesWon: 0,
       gamesLost: 0,
-      cleanWins: 0
     };
 
     return { ...state, players: [...state.players, newPlayer] };
@@ -354,13 +350,10 @@ const submitResults = () => {
 
     state.currentMatches.forEach((match) => {
       if (match.player2 === null) {
-        // Manejo de Bye (considerado como 2-0)
         const player1 = updatedPlayers.find((p) => p.id === match.player1.id);
         if (player1) {
           player1.points += 2;
           player1.victories += 1;
-          player1.gamesWon += 2;
-          player1.cleanWins += 1;
           player1.byes += 1;
           player1.lastByeRound = state.roundNumber;
         }
@@ -384,11 +377,6 @@ const submitResults = () => {
           if (player1Wins) {
             player1.points += 2;
             player1.victories += 1;
-
-            // Registrar victorias limpias (2-0)
-            if (games1 === 2 && games2 === 0) {
-              player1.cleanWins += 1;
-            }
           } else if (isDraw) {
             player1.points += 1;
             player2.points += 1;
@@ -397,10 +385,6 @@ const submitResults = () => {
           } else {
             player2.points += 2;
             player2.victories += 1;
-
-            if (games2 === 2 && games1 === 0) {
-              player2.cleanWins += 1;
-            }
           }
 
           // Registrar oponentes
@@ -581,18 +565,13 @@ const breakTies = (players: Player[], matches: Match[]): Player[] => {
       }
     }
 
-    // 4. Victorias limpias (2-0)
-    if (b.cleanWins !== a.cleanWins) return b.cleanWins - a.cleanWins;
-
-    // 5. Diferencia de juegos (games won - games lost)
-    const aDiff = a.gamesWon - a.gamesLost;
-    const bDiff = b.gamesWon - b.gamesLost;
-    if (bDiff !== aDiff) return bDiff - aDiff;
-
-    // 6. Más juegos ganados
+    // 4. Diferencia de juegos (games won - games lost)
     if (b.gamesWon !== a.gamesWon) return b.gamesWon - a.gamesWon;
 
-    // 7. Dificultad de oponentes
+    // 5. numero de byes
+    if (b.byes !== a.byes) return b.byes - a.byes;
+
+    // 6. Dificultad de oponentes
     return b.opponentDifficulty - a.opponentDifficulty;
   });
 };
@@ -608,7 +587,7 @@ const findDirectMatch = (playerA: Player, playerB: Player, matches: Match[]): Ma
 };
 
 const calculateOpponentDifficulty = (player: Player, allPlayers: Player[]): number => {
-  let difficultySum = player.points;
+  let difficultySum = player.points - player.byes * 2;
   const weight = 0.5;
 
   player.opponents.forEach((opponentId) => {

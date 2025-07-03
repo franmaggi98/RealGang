@@ -41,7 +41,7 @@
               winner = 'Empate';
             }
           } else if (!m.player2) {
-            resultString = '2-0 (Bye)';
+            resultString = '(Bye)';
             winner = m.player1.name;
           }
 
@@ -84,7 +84,6 @@
                     <span class="italic">({m.deck2Name})</span>
                   {:else}
                     <span class="font-medium">{m.player1Name}</span>
-                    <span class="italic">(bye)</span>
                   {/if}
                 </div>
 

@@ -3,7 +3,6 @@
   import tournamentStore from '../store/tournamentStore';
   import PlayerList from '$lib/components/PlayerList.svelte';
   import MatchList from '$lib/components/MatchList.svelte';
-  import History from '$lib/components/History.svelte';
 
   let playerName = '';
   const maxNameLength = 19;
